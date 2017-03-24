@@ -10,7 +10,9 @@
 
 ; reactive atom that manages our application state
 (def staticstates (atom {:globaltable nil
-                         :globalchart nil}))
+                         :globalchart nil
+                         :localtable nil
+                         :localchart nil}))
 
 (def global-users
   (atom {:user/names nil}))

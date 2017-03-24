@@ -4,6 +4,7 @@
             [om.dom :as dom]
             [directionalsurvey.config :as config]
             [directionalsurvey.events :as events]
+            [directionalsurvey.utils :as utils]
             [directionalsurvey.db :as mydb]))
 
 (defn dev-setup []
@@ -118,49 +119,6 @@
               MyGlobalTable (gdom/getElement "myglobaltable"))
 
 ;; Highchart
-(defn gen-chart-config-handson
-  [tableconfig]
-  (let [currenttableconfig  tableconfig
-        ret (atom {
-                   :chart    {:type     "line"
-                              :zoomType "xy"}
-                   :title    {:text "Directional Survey"}
-                   :subtitle {:text "An experiment"}
-                   :xAxis    {:title      {:text "X"}}
-                   :yAxis    {:title      {:text "Y"}
-                              :reversed true}
-                   :credits  {:enabled false}})]
-    (let [tabledata (:data currenttableconfig)
-          tmptabledata (into [[0 0 0]] tabledata)
-          tmptabledata1 (mapv (fn [in]
-                                (let [md (get in 0)
-                                      tvd (get in 1)
-                                      dev (get in 2)]
-                                  [md tvd dev 0]))
-                              tmptabledata)
-          tmptable (reduce (fn [data rowIdx]
-                             (let [md1 (get-in data [(- rowIdx 1) 0])
-                                   md2 (get-in data [rowIdx 0])
-                                   x1 (get-in data [(- rowIdx 1) 3])
-                                   dev2 (get-in data [rowIdx 2])
-                                   x2 (+ x1 (* (- md2 md1) (js/Math.sin (* (/ dev2 180.0) js/Math.PI))))]
-                               (assoc-in data [rowIdx 3] x2)))
-                           tmptabledata1
-                           (range 1 (count tmptabledata1)))
-          tmptable1 (rest tmptable)
-          gendata (mapv (fn [data]
-                          (let [y (get data 1)
-                                x (get data 3)]
-                            [x y]))
-                        tmptable1)
-          mydata [{:name "Directional survey" :data gendata}]]
-      ;(println "currenttableconfig: " tabledata)
-      ;(println "tmptabledata: " tmptabledata)
-      ;(println "tmptabledata1: " tmptabledata1)
-      ;(println "tmptable: " tmptable)
-      ;(println "mydata: " mydata)
-      (swap! ret assoc-in [:series] mydata))
-    ret))
 
 (defui MyGlobalChart
   Object
@@ -169,13 +127,13 @@
       #js {:style {:height "100%" :width "100%" :position "relative"}}))
   (componentDidMount [this]
     (let [{:keys [tableconfig]} (om/props this)
-          my-chart-config (gen-chart-config-handson tableconfig)]
+          my-chart-config (utils/gen-chart-config-handson tableconfig)]
       (swap! mydb/staticstates
              assoc
              :globalchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config)))))
   (componentDidUpdate [this prev-props new-props]
     (let [{:keys [tableconfig]} (om/props this)
-          my-chart-config (gen-chart-config-handson tableconfig)
+          my-chart-config (utils/gen-chart-config-handson tableconfig)
           chart (:globalchart @mydb/staticstates)]
       (.log js/console "My global chart componentDidUpdate")
       (.destroy chart)
@@ -190,6 +148,101 @@
 
 (om/add-root! myglobalchartreconciler
               MyGlobalChart (gdom/getElement "myglobalchart"))
+
+
+
+;;;; Handsontable
+;
+(defn mylocaltableread
+  [{:keys [state] :as env} key params]
+  (let [st @state]
+    (if-let [[_ value] (find st key)]
+      {:value value}
+      {:value :not-found})))
+
+(defmulti mylocaltablemutate om/dispatch)
+
+(defmethod mylocaltablemutate `settablevalue
+  [{:keys [state] :as env} key {:keys [changeDatas]}]
+  {:action (fn []
+             (.log js/console "mytablemutate: " changeDatas)
+             (events/set-table-value changeDatas))})
+
+(defui MyLocalTable
+  static om/IQuery
+  (query [this]
+    [:tableconfig])
+  Object
+  (render [this]
+    (dom/div
+      #js {:style {:min-width "310px" :max-width "800px" :margin "0 auto"}}))
+  (componentDidMount [this]
+    (let [{:keys [tableconfig]} (om/props this)]
+      (swap! mydb/staticstates
+             assoc
+             :localtable (js/Handsontable (dom/node this) (clj->js
+                                                             (assoc-in tableconfig
+                                                                       [:afterChange]
+                                                                       #(do
+                                                                          (let [changeData (js->clj %)]
+                                                                            ;(.log js/console "change something!!!")
+                                                                            ;(.log js/console "changeData: " changeData)
+                                                                            (om/transact! this `[(settablevalue {:changeDatas ~changeData})])))))))))
+
+  (componentDidUpdate [this prev-props new-props]
+    (let [{:keys [tableconfig]} (om/props this)
+          table (:localtable @mydb/staticstates)]
+      ;(.log js/console "componentDidUpdate")
+      (.destroy table)
+      (swap! mydb/staticstates
+             assoc
+             :localtable (js/Handsontable (dom/node this) (clj->js
+                                                             (assoc-in tableconfig
+                                                                       [:afterChange]
+                                                                       #(do
+                                                                          (let [changeData (js->clj %)]
+                                                                            ;(.log js/console "change something!!!")
+                                                                            ;(.log js/console "changeData: " changeData)
+                                                                            (om/transact! this `[(settablevalue {:changeDatas ~changeData})]))))))))))
+(def mylocaltablereconciler
+  (om/reconciler {:state mydb/local-states
+                  :parser (om/parser {:read mylocaltableread :mutate mylocaltablemutate})}))
+
+(om/add-root! mylocaltablereconciler
+              MyLocalTable (gdom/getElement "mylocaltable"))
+;
+;;; Highchart
+;
+(defui MyLocalChart
+  Object
+  (render [this]
+    (dom/div
+      #js {:style {:height "100%" :width "100%" :position "relative"}}))
+  (componentDidMount [this]
+    (let [{:keys [tableconfig]} (om/props this)
+          my-chart-config (utils/gen-chart-config-handson tableconfig)]
+      (swap! mydb/staticstates
+             assoc
+             :localchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config)))))
+  (componentDidUpdate [this prev-props new-props]
+    (let [{:keys [tableconfig]} (om/props this)
+          my-chart-config (utils/gen-chart-config-handson tableconfig)
+          chart (:localchart @mydb/staticstates)]
+      (.log js/console "My local chart componentDidUpdate")
+      (.destroy chart)
+      (swap! mydb/staticstates
+             assoc
+             :localchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config))))))
+
+
+(def mylocalchartreconciler
+  (om/reconciler {:state mydb/local-states}))
+;:parser (om/parser {:read mytableread :mutate mytablemutate})}))
+
+(om/add-root! mylocalchartreconciler
+              MyLocalChart (gdom/getElement "mylocalchart"))
+
+
 
 (defn ^:export init []
   (dev-setup))
