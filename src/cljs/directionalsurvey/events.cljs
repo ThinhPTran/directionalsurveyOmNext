@@ -18,8 +18,10 @@
   (def send-channel! (:send-fn ws-connection)))
 
 ;; Event handler definitions
-
-
+(defn set-table-value [changeDatas]
+  (.log js/console "set-table-value: " changeDatas)
+  (doseq [changeData changeDatas]
+    (send-channel! [:user/set-table-value changeData])))
 
 ; handle application-specific events
 (defn- app-message-received [[msgType data]]

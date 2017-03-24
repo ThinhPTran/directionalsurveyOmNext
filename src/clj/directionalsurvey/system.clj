@@ -130,7 +130,7 @@
 
 (defn- handle-user-set-table-value [db-connection changeData]
   (let [column (get changeData 1)]
-    ;(log/warn "column: " column)
+    (log/warn "column: " column)
     (cond
       (= 0 column) (handle-user-change-MD db-connection changeData)
       (= 1 column) (handle-user-change-TVD db-connection changeData)

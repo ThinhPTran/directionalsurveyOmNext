@@ -9,7 +9,8 @@
                        :contextMenu true})
 
 ; reactive atom that manages our application state
-(def staticstates (atom {:globaltable nil}))
+(def staticstates (atom {:globaltable nil
+                         :globalchart nil}))
 
 (def global-users
   (atom {:user/names nil}))
@@ -18,5 +19,9 @@
   (atom {:count 0}))
 
 (def global-states
-  (atom {:name "Om.Next"
+  (atom {:name "Global cummulative states"
+         :tableconfig init-tableconfig}))
+
+(def local-states
+  (atom {:name "Local user states"
          :tableconfig init-tableconfig}))

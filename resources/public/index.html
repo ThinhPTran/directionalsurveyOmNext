@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>My experiment</title>
 
-    <!--<link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">-->
-    <!--<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">-->
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css">
     <!--<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/gridstack.js/0.2.6/gridstack.min.css" />-->
 
     <!--&lt;!&ndash; ATTENTION \/ &ndash;&gt;-->
@@ -21,9 +21,15 @@
     <link type="text/css" rel="stylesheet" href="css/handsontable.css">
     <script src="js/highcharts.js"></script>
     <script src="js/highchartsexport.js"></script>
-    <div id="usernames"></div>
-    <div id="counter"></div>
-    <div id="mytable"></div>
+    <div class="row">
+        <div id="counter"></div>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-4" id="usernames"></div>
+        <div class="col-sm-4" id="myglobaltable"></div>
+        <div class="col-sm-4" id="myglobalchart"></div>
+    </div>
     <script src="js/compiled/app.js"></script>
     <script>directionalsurvey.core.init();</script>
 </body>
