@@ -39,15 +39,18 @@
                          :contextMenu true}))
 
 ;; Handle messages
-(defn- handle-user-ident [db-connection data]
+(defn- handle-user-ident [db-connection data rcv-chan]
   @(d/transact db-connection
                [{:db/id #db/id[:db.part/user]
-                  :user/name (:name data)}])
+                 :user/name (:name data)}])
+                 ;:user/uid rcv-chan}])
   (let [mydb (d/db db-connection)
         rawdata (q '[:find ?name
                      :where [_ :user/name ?name]]
                    mydb)
         usernames (vec (flatten (vec (into #{} rawdata))))]
+    (log/warn "rcv-chan: " rcv-chan)
+    (log/warn "rawdata: " rawdata)
     (doseq [uid (:any @connected-uids)]
        (channel-send! uid [:user/names usernames])
        (channel-send! uid [:db/table @tableconfig]))))
@@ -137,16 +140,16 @@
       (= 2 column) (handle-user-change-Deviation db-connection changeData)
       :else (handle-user-default db-connection changeData))))
 
-(defn- ws-msg-handler [db-connection]
+(defn- ws-msg-handler [db-connection rcv-chan]
   (fn [{:keys [event] :as msg} _]
     (let [[id data :as ev] event]
       (case id
-        :user/ident (handle-user-ident db-connection data)
+        :user/ident (handle-user-ident db-connection data rcv-chan)
         :user/set-table-value (handle-user-set-table-value db-connection data)
         (log/warn "Unmatched event: " id)))))
 
 (defn ws-message-router [db-connection]
-  (sente/start-chsk-router-loop! (ws-msg-handler db-connection) 
+  (sente/start-chsk-router-loop! (ws-msg-handler db-connection receive-channel)
                                  receive-channel))
 
 ;(defn- read-changes [{:keys [db-after tx-data] :as report}]

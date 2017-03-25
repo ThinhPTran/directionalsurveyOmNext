@@ -27,7 +27,9 @@
 (defn- app-message-received [[msgType data]]
   (case msgType
     :user/names (swap! mydb/global-users assoc :user/names data)
-    :db/table (swap! mydb/global-states assoc :tableconfig data)
+    :db/table (do
+                (swap! mydb/global-states assoc :tableconfig data)
+                (swap! mydb/local-states assoc :tableconfig data))
     (.log js/console "Unmatched application event")))
 
 ; handle websocket-connection-specific events
