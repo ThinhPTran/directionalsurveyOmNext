@@ -39,7 +39,7 @@
                          :contextMenu true}))
 
 ;; Handle messages
-(defn- handle-user-ident [db-connection data rcv-chan]
+(defn- handle-user-ident [db-connection data]
   @(d/transact db-connection
                [{:db/id #db/id[:db.part/user]
                  :user/name (:name data)}])
@@ -49,7 +49,6 @@
                      :where [_ :user/name ?name]]
                    mydb)
         usernames (vec (flatten (vec (into #{} rawdata))))]
-    (log/warn "rcv-chan: " rcv-chan)
     (log/warn "rawdata: " rawdata)
     (doseq [uid (:any @connected-uids)]
        (channel-send! uid [:user/names usernames])
@@ -131,8 +130,12 @@
   (doseq [uid (:any @connected-uids)]
      (channel-send! uid [:db/table @tableconfig])))
 
-(defn- handle-user-set-table-value [db-connection changeData]
-  (let [column (get changeData 1)]
+(defn- handle-user-set-table-value [db-connection data]
+  (let [username (:username data)
+        changeData (:changeData data)
+        column (get changeData 1)]
+    (log/warn "user: " username)
+    (log/warn "changeData: " changeData)
     (log/warn "column: " column)
     (cond
       (= 0 column) (handle-user-change-MD db-connection changeData)
@@ -140,16 +143,16 @@
       (= 2 column) (handle-user-change-Deviation db-connection changeData)
       :else (handle-user-default db-connection changeData))))
 
-(defn- ws-msg-handler [db-connection rcv-chan]
+(defn- ws-msg-handler [db-connection]
   (fn [{:keys [event] :as msg} _]
     (let [[id data :as ev] event]
       (case id
-        :user/ident (handle-user-ident db-connection data rcv-chan)
+        :user/ident (handle-user-ident db-connection data)
         :user/set-table-value (handle-user-set-table-value db-connection data)
         (log/warn "Unmatched event: " id)))))
 
 (defn ws-message-router [db-connection]
-  (sente/start-chsk-router-loop! (ws-msg-handler db-connection receive-channel)
+  (sente/start-chsk-router-loop! (ws-msg-handler db-connection)
                                  receive-channel))
 
 ;(defn- read-changes [{:keys [db-after tx-data] :as report}]

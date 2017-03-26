@@ -25,27 +25,28 @@
   (if (str/blank? name)
     (js/alert "Please enter a user name")
     (do
-      (.log js/console (str "Logging in with user: " name))
-      (encore/ajax-lite "/login"
-                       {:method :post
-                        :headers {:X-CSRF-Token (:csrf-token @receive-channel)}
-                        :params  {:user-id (str name)}}
-
-                       (fn [ajax-resp]
-                         (.log js/console (str "Ajax login response: %s" ajax-resp))
-                         (let [login-successful? true] ; Your logic here
-
-                           (if-not login-successful?
-                             (.log js/console "Login failed")
-                             (do
-                               (.log js/console "Login successful")
-                               (sente/chsk-reconnect! chsk)))))))))
+      (.log js/console (str "Logging in with user: " name)))))
+      ;(encore/ajax-lite "/login"
+      ;                 {:method :post
+      ;                  :headers {:X-CSRF-Token (:csrf-token @receive-channel)}
+      ;                  :params  {:user-id (str name)}}
+      ;
+      ;                 (fn [ajax-resp]
+      ;                   (.log js/console (str "Ajax login response: %s" ajax-resp))
+      ;                   (let [login-successful? true] ; Your logic here
+      ;
+      ;                     (if-not login-successful?
+      ;                       (.log js/console "Login failed")
+      ;                       (do
+      ;                         (.log js/console "Login successful")
+      ;                         (sente/chsk-reconnect! chsk)))))))))
 
 ;; Event handler definitions
 (defn set-table-value [changeDatas]
   (.log js/console "set-table-value: " changeDatas)
   (doseq [changeData changeDatas]
-    (send-channel! [:user/set-table-value changeData])))
+    (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
+                                           :changeData changeData}])))
 
 ; handle application-specific events
 (defn- app-message-received [[msgType data]]
@@ -59,7 +60,9 @@
 ; handle websocket-connection-specific events
 (defn- channel-state-message-received [state]
   (if (:first-open? state)
-    (send-channel! [:user/ident {:name (rand-nth possible-usernames)}])))
+    (let [name (rand-nth possible-usernames)]
+      (swap! mydb/local-login assoc :user/name name)
+      (send-channel! [:user/ident {:name name}]))))
 
 ; main router for websocket events
 (defn- event-handler [[id data] _]
