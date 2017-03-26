@@ -1,6 +1,8 @@
 (ns directionalsurvey.events
-  (:require [taoensso.sente :as sente :refer (cb-success?)]
-            [directionalsurvey.db :as mydb]))
+  (:require [taoensso.encore :as encore]
+            [taoensso.sente :as sente :refer (cb-success?)]
+            [directionalsurvey.db :as mydb]
+            [clojure.string :as str]))
 
 ; generate a list of usernames
 (def possible-usernames
@@ -14,8 +16,30 @@
 (def ws-connection (sente/make-channel-socket! "/channel" {:type :auto}))
 (let [{:keys [ch-recv send-fn]}
       ws-connection]
-  (def receive-channel (:ch-recv ws-connection))
-  (def send-channel! (:send-fn ws-connection)))
+  (def chsk            chsk)
+  (def receive-channel ch-recv)
+  (def send-channel!   send-fn))
+
+;; User login
+(defn user-login [name]
+  (if (str/blank? name)
+    (js/alert "Please enter a user name")
+    (do
+      (.log js/console (str "Logging in with user: " name))
+      (encore/ajax-lite "/login"
+                       {:method :post
+                        :headers {:X-CSRF-Token (:csrf-token @receive-channel)}
+                        :params  {:user-id (str name)}}
+
+                       (fn [ajax-resp]
+                         (.log js/console (str "Ajax login response: %s" ajax-resp))
+                         (let [login-successful? true] ; Your logic here
+
+                           (if-not login-successful?
+                             (.log js/console "Login failed")
+                             (do
+                               (.log js/console "Login successful")
+                               (sente/chsk-reconnect! chsk)))))))))
 
 ;; Event handler definitions
 (defn set-table-value [changeDatas]

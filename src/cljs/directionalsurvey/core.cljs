@@ -58,6 +58,63 @@
 ;(om/add-root! counterreconciler
 ;              Counter (gdom/getElement "counter"))
 
+;; Login form
+(defn loginread
+  [{:keys [state] :as env} key params]
+  (let [st @state]
+    (if-let [[_ v] (find st key)]
+      {:value v}
+      {:value :not-found})))
+
+(defmulti loginmutate om/dispatch)
+
+(defmethod loginmutate `update-text
+  [{:keys [state] :as env} key {:keys [mytext]}]
+  {:action
+    (fn []
+      (.log js/console mytext)
+      (swap! state assoc :input-text mytext))})
+
+(defmethod loginmutate `user-login
+  [{:keys [state] :as env} key {:keys [name]}]
+  {:action
+   (fn []
+     (events/user-login name))})
+
+(defui LoginForm
+  static om/IQuery
+  (query [_]
+    [:input-text :user/name])
+  Object
+  (render [this]
+    (let [{:keys [input-text user/name]} (om/props this)]
+      (dom/div nil
+               (dom/input
+                 #js {:id "my-input-box"
+                      :type "text"
+                      :value input-text
+                      :onChange (fn [_]
+                                   (let [v (.-value (gdom/getElement "my-input-box"))]
+                                     (.log js/console "change something!!!")
+                                     (om/transact! this `[(update-text {:mytext ~v})])))})
+               (dom/button
+                 #js {:id "btn-login"
+                      :type "button"
+                      :onClick (fn [_]
+                                 (om/transact! this `[(user-login {:name ~input-text})]))}
+                 "Secure login!")
+               (dom/div nil (str "input text: " input-text))
+               (dom/div nil (str "user name: " name))))))
+
+
+(def loginreconciler
+  (om/reconciler {:state mydb/local-login
+                  :parser (om/parser {:read loginread :mutate loginmutate})}))
+
+(om/add-root! loginreconciler
+              LoginForm (gdom/getElement "loginform"))
+
+
 ;;; Handsontable
 
 (defn mytableread
@@ -144,7 +201,6 @@
 
 (def myglobalchartreconciler
   (om/reconciler {:state mydb/global-states}))
-                  ;:parser (om/parser {:read mytableread :mutate mytablemutate})}))
 
 (om/add-root! myglobalchartreconciler
               MyGlobalChart (gdom/getElement "myglobalchart"))

@@ -20,6 +20,10 @@
 (def local-count
   (atom {:count 0}))
 
+(def local-login
+  (atom {:user/name nil
+         :input-text "sample input"}))
+
 (def global-states
   (atom {:name "Global cummulative states"
          :tableconfig init-tableconfig}))
