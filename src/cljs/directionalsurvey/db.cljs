@@ -14,6 +14,9 @@
                          :localtable nil
                          :localchart nil}))
 
+(def globalconfig
+  (atom {:tableconfig init-tableconfig}))
+
 (def global-users
   (atom {:user/names nil}))
 
@@ -26,8 +29,10 @@
 
 (def global-states
   (atom {:name "Global cummulative states"
-         :tableconfig init-tableconfig}))
+         :tableconfig init-tableconfig
+         :listactions nil}))
 
 (def local-states
   (atom {:name "Local user states"
-         :tableconfig init-tableconfig}))
+         :tableconfig init-tableconfig
+         :listactions nil}))

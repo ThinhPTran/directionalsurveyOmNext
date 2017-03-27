@@ -44,17 +44,116 @@
 ;; Event handler definitions
 (defn set-table-value [changeDatas]
   (.log js/console "set-table-value: " changeDatas)
-  (doseq [changeData changeDatas]
-    (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
-                                           :changeData changeData}])))
+  (if (some? changeDatas)
+    (doseq [changeData changeDatas]
+      (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
+                                             :changeData changeData}]))))
+
+(defn handle-set-table [data]
+  (swap! mydb/globalconfig assoc :tableconfig data)
+  (swap! mydb/global-states assoc :tableconfig data)
+  (swap! mydb/local-states assoc :tableconfig data))
+
+(defn handle-user-change-MD [tableconfig action]
+  (let [dataTable (:data tableconfig)
+        rowIdx (:action/row action)
+        colIdx (:action/column action)
+        newMD (:action/newval action)
+        tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newMD)
+        tmpDataTable1 (sort #(compare (get %1 0) (get %2 0)) tmpDataTable1)
+        tmpDataTable2 (into [[0 0 0]] (drop-last tmpDataTable1))
+        newDataTable (mapv (fn [in1 in2]
+                             (let [md1 (get in1 0)
+                                   tvd1 (get in1 1)
+                                   md2 (get in2 0)
+                                   tvd2 (get in2 1)
+                                   dmd (- md1 md2)
+                                   md3 md1
+                                   tvd3 tvd1
+                                   dev3 (* 180.0 (/ (js/Math.acos (/ (double (- tvd1 tvd2)) (double dmd))) js/Math.PI))]
+                               [md3 tvd3 dev3]))
+                           tmpDataTable1 tmpDataTable2)
+        newtableconfig (assoc tableconfig :data newDataTable)]
+    newtableconfig))
+
+(defn handle-user-change-TVD [tableconfig action]
+  (let [dataTable (:data tableconfig)
+        rowIdx (:action/row action)
+        colIdx (:action/column action)
+        newTVD (:action/newval action)
+        tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newTVD)
+        tmpDataTable2 (into [[0 0 0]] (drop-last tmpDataTable1))
+        newDataTable (mapv (fn [in1 in2]
+                             (let [md1 (get in1 0)
+                                   tvd1 (get in1 1)
+                                   md2 (get in2 0)
+                                   tvd2 (get in2 1)
+                                   dmd (- md1 md2)
+                                   md3 md1
+                                   tvd3 tvd1
+                                   dev3 (* 180.0 (/ (js/Math.acos (/ (double (- tvd1 tvd2)) (double dmd))) js/Math.PI))]
+                               [md3 tvd3 dev3]))
+                           tmpDataTable1 tmpDataTable2)
+        newtableconfig (assoc tableconfig :data newDataTable)]
+    newtableconfig))
+
+(defn handle-user-change-Deviation [tableconfig action]
+  (let [dataTable (:data tableconfig)
+        rowIdx (:action/row action)
+        colIdx (:action/column action)
+        newDeviation (:action/newval action)
+        tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newDeviation)
+        tmpDataTable2 (assoc-in tmpDataTable1 [0 1] (* (get-in tmpDataTable1 [0 0]) (Math/cos (* (/ (get-in tmpDataTable1 [0 2]) 180.0) Math/PI))))
+        newDataTable (reduce (fn [data rowIdx]
+                               (let [md1 (get-in data [(- rowIdx 1) 0])
+                                     md2 (get-in data [rowIdx 0])
+                                     tvd1 (get-in data [(- rowIdx 1) 1])
+                                     dev2 (get-in data [rowIdx 2])
+                                     tvd2 (+ tvd1 (* (- md2 md1) (js/Math.cos (* (/ dev2 180.0) js/Math.PI))))]
+                                 (assoc-in data [rowIdx 1] tvd2)))
+                           tmpDataTable2
+                           (range 1 (count tmpDataTable2)))
+        newtableconfig (assoc tableconfig :data newDataTable)]
+    newtableconfig))
+
+(defn handle-table-actions [tableconfig action]
+  (let [colIdx (:action/column action)]
+    ;(.log js/console "action: " action)
+    (cond
+      (= 0 colIdx) (handle-user-change-MD tableconfig action)
+      (= 1 colIdx) (handle-user-change-TVD tableconfig action)
+      (= 2 colIdx) (handle-user-change-Deviation tableconfig action))))
+
+(defn handle-global-table [data]
+  (let [myinitconfig (:tableconfig @mydb/globalconfig)
+        newtableconfig (reduce (fn [indata action]
+                                 (handle-table-actions indata action)) myinitconfig data)]
+    (swap! mydb/global-states assoc :tableconfig newtableconfig)))
+
+(defn handle-local-table [data]
+  (let [myinitconfig (:tableconfig @mydb/globalconfig)
+        newtableconfig (reduce (fn [indata action]
+                                 (handle-table-actions indata action)) myinitconfig data)]
+    (swap! mydb/local-states assoc :tableconfig newtableconfig)))
+
+(defn handle-listactions-received [data]
+  (let [cumactions (:result data)
+        username (:user/name @mydb/local-login)
+        localactions (filterv #(= (:action/user %) username) cumactions)]
+    (.log js/console "User name: " username)
+    (.log js/console "Cummulative actions: " cumactions)
+    (.log js/console "Local actions: " localactions)
+    (swap! mydb/global-states assoc :listactions cumactions)
+    (swap! mydb/local-states assoc :listactions localactions)
+    (handle-global-table cumactions)
+    (handle-local-table localactions)))
 
 ; handle application-specific events
 (defn- app-message-received [[msgType data]]
   (case msgType
     :user/names (swap! mydb/global-users assoc :user/names data)
-    :db/table (do
-                (swap! mydb/global-states assoc :tableconfig data)
-                (swap! mydb/local-states assoc :tableconfig data))
+    :db/table (handle-set-table data)
+    :user/listactions (handle-listactions-received data)
     (.log js/console "Unmatched application event")))
 
 ; handle websocket-connection-specific events

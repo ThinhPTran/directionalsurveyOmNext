@@ -116,7 +116,6 @@
 
 
 ;;; Handsontable
-
 (defn mytableread
   [{:keys [state] :as env} key params]
   (let [st @state]
@@ -129,7 +128,7 @@
 (defmethod mytablemutate `settablevalue
   [{:keys [state] :as env} key {:keys [changeDatas]}]
   {:action (fn []
-             (.log js/console "mytablemutate: " changeDatas)
+             ;(.log js/console "mytablemutate: " changeDatas)
              (events/set-table-value changeDatas))})
 
 (defui MyGlobalTable
@@ -156,7 +155,7 @@
   (componentDidUpdate [this prev-props new-props]
     (let [{:keys [tableconfig]} (om/props this)
           table (:globaltable @mydb/staticstates)]
-      ;(.log js/console "componentDidUpdate")
+      (.log js/console "MyGlobalTable: componentDidUpdate")
       (.destroy table)
       (swap! mydb/staticstates
              assoc
@@ -176,7 +175,6 @@
               MyGlobalTable (gdom/getElement "myglobaltable"))
 
 ;; Highchart
-
 (defui MyGlobalChart
   Object
   (render [this]
@@ -192,7 +190,7 @@
     (let [{:keys [tableconfig]} (om/props this)
           my-chart-config (utils/gen-chart-config-handson tableconfig)
           chart (:globalchart @mydb/staticstates)]
-      (.log js/console "My global chart componentDidUpdate")
+      ;(.log js/console "My global chart componentDidUpdate")
       (.destroy chart)
       (swap! mydb/staticstates
              assoc
@@ -205,10 +203,36 @@
 (om/add-root! myglobalchartreconciler
               MyGlobalChart (gdom/getElement "myglobalchart"))
 
+;; local transactions
+(defui LocalTransactItem
+  Object
+  (render [this]
+    (let [{:keys [name instant]} (om/props this)]
+      (dom/li nil (str name " changed at " instant)))))
+
+(def ui-localtransactitems (om/factory LocalTransactItem {:keyfn :instant}))
+
+(defui LocalTransacts
+  Object
+  (render [this]
+    (let [{:keys [listactions]} (om/props this)]
+      (dom/div nil
+               (dom/h2 nil "Local actions: ")
+               ;(dom/div nil (str (om/props this)))
+               (apply dom/ul nil
+                      (map #(ui-localtransactitems {:react-key (:action/instant %)
+                                                    :name (:action/user %)
+                                                    :instant (:action/instant %)})
+                           listactions))))))
+
+(def localtransactionreconciler
+  (om/reconciler {:state mydb/local-states}))
+
+(om/add-root! localtransactionreconciler
+              LocalTransacts (gdom/getElement "localtransaction"))
 
 
 ;;;; Handsontable
-;
 (defn mylocaltableread
   [{:keys [state] :as env} key params]
   (let [st @state]
@@ -221,7 +245,7 @@
 (defmethod mylocaltablemutate `settablevalue
   [{:keys [state] :as env} key {:keys [changeDatas]}]
   {:action (fn []
-             (.log js/console "mytablemutate: " changeDatas)
+             ;(.log js/console "mytablemutate: " changeDatas)
              (events/set-table-value changeDatas))})
 
 (defui MyLocalTable
@@ -248,7 +272,7 @@
   (componentDidUpdate [this prev-props new-props]
     (let [{:keys [tableconfig]} (om/props this)
           table (:localtable @mydb/staticstates)]
-      ;(.log js/console "componentDidUpdate")
+      (.log js/console "MyLocalTable: componentDidUpdate")
       (.destroy table)
       (swap! mydb/staticstates
              assoc
@@ -266,9 +290,8 @@
 
 (om/add-root! mylocaltablereconciler
               MyLocalTable (gdom/getElement "mylocaltable"))
-;
+
 ;;; Highchart
-;
 (defui MyLocalChart
   Object
   (render [this]
@@ -284,7 +307,7 @@
     (let [{:keys [tableconfig]} (om/props this)
           my-chart-config (utils/gen-chart-config-handson tableconfig)
           chart (:localchart @mydb/staticstates)]
-      (.log js/console "My local chart componentDidUpdate")
+      ;(.log js/console "My local chart componentDidUpdate")
       (.destroy chart)
       (swap! mydb/staticstates
              assoc
@@ -297,6 +320,35 @@
 
 (om/add-root! mylocalchartreconciler
               MyLocalChart (gdom/getElement "mylocalchart"))
+
+
+;; Cummulative transactions
+(defui CumTransactItem
+  Object
+  (render [this]
+    (let [{:keys [name instant]} (om/props this)]
+      (dom/li nil (str name " changed at " instant)))))
+
+(def ui-cumtransactitems (om/factory CumTransactItem {:keyfn :instant}))
+
+(defui CumTransacts
+  Object
+  (render [this]
+    (let [{:keys [listactions]} (om/props this)]
+      (dom/div nil
+               (dom/h2 nil "Cummulative actions: ")
+               ;(dom/div nil (str (om/props this)))
+               (apply dom/ul nil
+                      (map #(ui-cumtransactitems {:react-key (:action/instant %)
+                                                  :name (:action/user %)
+                                                  :instant (:action/instant %)})
+                           listactions))))))
+
+(def cumtransactionreconciler
+  (om/reconciler {:state mydb/global-states}))
+
+(om/add-root! cumtransactionreconciler
+              CumTransacts (gdom/getElement "cumtransaction"))
 
 
 

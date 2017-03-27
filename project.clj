@@ -11,7 +11,7 @@
                  [org.clojure/tools.logging "0.2.6"]
                  [ch.qos.logback/logback-classic "1.1.2"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
-                 [com.datomic/datomic-free "0.9.4755" :exclusions [org.slf4j/slf4j-nop
+                 [com.datomic/datomic-free "0.9.5390" :exclusions [org.slf4j/slf4j-nop
                                                                    org.slf4j/slf4j-log4j12]]]
   :plugins [[lein-cljsbuild "1.1.4"]
             [lein-ring "0.8.10"]]

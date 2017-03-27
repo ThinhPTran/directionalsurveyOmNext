@@ -10,7 +10,71 @@
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
   :db/doc "A user's uuid"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :action/user
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db/doc "User does the action"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :action/row
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "Row Index"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :action/column
+  :db/valueType :db.type/long
+  :db/cardinality :db.cardinality/one
+  :db/doc "Column Index"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :action/newval
+  :db/valueType :db.type/double
+  :db/cardinality :db.cardinality/one
+  :db/doc "New value"
+  :db.install/_attribute :db.part/db}
+ {:db/id #db/id[:db.part/db]
+  :db/ident :action/instant
+  :db/valueType :db.type/instant
+  :db/cardinality :db.cardinality/one
+  :db/doc "Time stamp"
   :db.install/_attribute :db.part/db}]
+
+;;;; User actions
+;[{:db/id #db/id[:db.part/db]
+;  :db/ident :action/user
+;  :db/valueType :db.type/string
+;  :db/cardinality :db.cardinality/one
+;  :db/doc "User does the action"
+;  :db.install/_attribute :db.part/db}
+; {:db/id #db/id[:db.part/db]
+;  :db/ident :action/row
+;  :db/valueType :db.type/long
+;  :db/cardinality :db.cardinality/one
+;  :db/doc "Row Index"
+;  :db.install/_attribute :db.part/db}
+; {:db/id #db/id[:db.part/db]
+;  :db/ident :action/column
+;  :db/valueType :db.type/long
+;  :db/cardinality :db.cardinality/one
+;  :db/doc "Column Index"
+;  :db.install/_attribute :db.part/db}
+; {:db/id #db/id[:db.part/db]
+;  :db/ident :action/newval
+;  :db/valueType :db.type/double
+;  :db/cardinality :db.cardinality/one
+;  :db/doc "New value"
+;  :db.install/_attribute :db.part/db}
+; {:db/id #db/id [:db.part/db]
+;  :db/ident :action/instant
+;  :db/valueType :db.type/instant
+;  :db/cardinality :db.cardinality/one
+;  :db/doc "Time stamp"
+;  :db.install/_attribute :db.part/db}]
+
+
 
 
 
