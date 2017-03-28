@@ -43,11 +43,12 @@
 
 ;; Event handler definitions
 (defn set-table-value [changeDatas]
-  (.log js/console "set-table-value: " changeDatas)
   (if (some? changeDatas)
-    (doseq [changeData changeDatas]
-      (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
-                                             :changeData changeData}]))))
+    (do
+      (.log js/console "set-table-value: " changeDatas)
+      (doseq [changeData changeDatas]
+          (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
+                                                 :changeData changeData}])))))
 
 (defn handle-set-table [data]
   (swap! mydb/globalconfig assoc :tableconfig data)
@@ -60,19 +61,24 @@
         colIdx (:action/column action)
         newMD (:action/newval action)
         tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newMD)
-        tmpDataTable1 (sort #(compare (get %1 0) (get %2 0)) tmpDataTable1)
-        tmpDataTable2 (into [[0 0 0]] (drop-last tmpDataTable1))
-        newDataTable (mapv (fn [in1 in2]
-                             (let [md1 (get in1 0)
-                                   tvd1 (get in1 1)
-                                   md2 (get in2 0)
-                                   tvd2 (get in2 1)
-                                   dmd (- md1 md2)
-                                   md3 md1
-                                   tvd3 tvd1
-                                   dev3 (* 180.0 (/ (js/Math.acos (/ (double (- tvd1 tvd2)) (double dmd))) js/Math.PI))]
-                               [md3 tvd3 dev3]))
-                           tmpDataTable1 tmpDataTable2)
+        tmpDataTable1 (vec (sort #(compare (get %1 0) (get %2 0)) tmpDataTable1))
+        tmpDataTable2 (assoc-in tmpDataTable1 [0 2] (* 180.0
+                                                       (/
+                                                         (js/Math.acos
+                                                           (/ (double (get-in tmpDataTable1 [0 1])) (double (get-in tmpDataTable1 [0 0]))))
+                                                         js/Math.PI)))
+        newDataTable (reduce (fn [data rowIdx]
+                               (let [md1 (get-in data [(- rowIdx 1) 0])
+                                     md2 (get-in data [rowIdx 0])
+                                     tvd1 (get-in data [(- rowIdx 1) 1])
+                                     tvd2 (get-in data [rowIdx 1])
+                                     dev3 (* 180.0
+                                             (/
+                                               (js/Math.acos (/ (double (- tvd1 tvd2)) (double (- md1 md2))))
+                                               js/Math.PI))]
+                                 (assoc-in data [rowIdx 2] dev3)))
+                             tmpDataTable2
+                             (range 1 (count tmpDataTable2)))
         newtableconfig (assoc tableconfig :data newDataTable)]
     newtableconfig))
 
@@ -82,18 +88,23 @@
         colIdx (:action/column action)
         newTVD (:action/newval action)
         tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newTVD)
-        tmpDataTable2 (into [[0 0 0]] (drop-last tmpDataTable1))
-        newDataTable (mapv (fn [in1 in2]
-                             (let [md1 (get in1 0)
-                                   tvd1 (get in1 1)
-                                   md2 (get in2 0)
-                                   tvd2 (get in2 1)
-                                   dmd (- md1 md2)
-                                   md3 md1
-                                   tvd3 tvd1
-                                   dev3 (* 180.0 (/ (js/Math.acos (/ (double (- tvd1 tvd2)) (double dmd))) js/Math.PI))]
-                               [md3 tvd3 dev3]))
-                           tmpDataTable1 tmpDataTable2)
+        tmpDataTable2 (assoc-in tmpDataTable1 [0 2] (* 180.0
+                                                       (/
+                                                         (js/Math.acos
+                                                           (/ (double (get-in tmpDataTable1 [0 1])) (double (get-in tmpDataTable1 [0 0]))))
+                                                         js/Math.PI)))
+        newDataTable (reduce (fn [data rowIdx]
+                                (let [md1 (get-in data [(- rowIdx 1) 0])
+                                      md2 (get-in data [rowIdx 0])
+                                      tvd1 (get-in data [(- rowIdx 1) 1])
+                                      tvd2 (get-in data [rowIdx 1])
+                                      dev3 (* 180.0
+                                             (/
+                                               (js/Math.acos (/ (double (- tvd1 tvd2)) (double (- md1 md2))))
+                                               js/Math.PI))]
+                                  (assoc-in data [rowIdx 2] dev3)))
+                             tmpDataTable2
+                             (range 1 (count tmpDataTable2)))
         newtableconfig (assoc tableconfig :data newDataTable)]
     newtableconfig))
 
@@ -137,7 +148,8 @@
     (swap! mydb/local-states assoc :tableconfig newtableconfig)))
 
 (defn handle-listactions-received [data]
-  (let [cumactions (:result data)
+  (let [rawdata (:result data)
+        cumactions (vec (sort #(compare (:action/instant %1) (:action/instant %2)) rawdata))
         username (:user/name @mydb/local-login)
         localactions (filterv #(= (:action/user %) username) cumactions)]
     (.log js/console "User name: " username)
