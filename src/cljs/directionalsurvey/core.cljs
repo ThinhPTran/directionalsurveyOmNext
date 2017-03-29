@@ -58,6 +58,60 @@
 ;(om/add-root! counterreconciler
 ;              Counter (gdom/getElement "counter"))
 
+;; Slider
+(defn mysliderread
+  [{:keys [state] :as env} key params]
+  (let [st @state]
+    (if-let [[_ v] (find st key)]
+      {:value v}
+      {:value :not-found})))
+
+(defmulti myslidermutate om/dispatch)
+
+(defmethod myslidermutate `view-history
+  [{:keys [state] :as env} key {:keys [currentpick]}]
+  {:action
+   (fn []
+     (.log js/console "Current Pick: " currentpick)
+     (events/set-history-point currentpick))})
+
+(defui MySlider
+  static om/IQuery
+  (query [this]
+    [:totalactions :currentpick :totallistactions])
+  Object
+  (render [this]
+    (let [{:keys [totalactions currentpick totallistactions]} (om/props this)
+          username (if (= currentpick 0) "No Information" (:action/user (get totallistactions (- currentpick 1))))
+          instant (if (= currentpick 0) "No Information" (:action/instant (get totallistactions (- currentpick 1))))]
+      (dom/div nil
+               (dom/input #js {:id "myrange"
+                               :type "range"
+                               :min 0
+                               :max totalactions
+                               :value currentpick
+                               :step 1
+                               :onChange (fn [_]
+                                           (let
+                                             [v (.-value (gdom/getElement "myrange"))]
+                                             (om/transact! this `[(view-history {:currentpick ~v})])))})
+               ;(dom/div nil (str "Totallistactions: " totallistactions))
+               ;(dom/div nil (str "Totalactions: " totalactions))
+               ;(dom/div nil (str "Current pick: " currentpick))
+               (dom/div nil (str "Username: " username))
+               (dom/div nil (str "at: " instant))))))
+
+  ;(componentDidMount [this]
+  ;  (let [{:keys [totalactions currentpick]} (om/props this)]
+  ;    (js/rangeslider (js/$ (dom/node this))))))
+
+(def sliderreconciler
+  (om/reconciler {:state mydb/global-states
+                  :parser (om/parser {:read mysliderread :mutate myslidermutate})}))
+
+(om/add-root! sliderreconciler
+              MySlider (gdom/getElement "actionslider"))
+
 ;; Login form
 (defn loginread
   [{:keys [state] :as env} key params]
@@ -106,14 +160,12 @@
                (dom/div nil (str "input text: " input-text))
                (dom/div nil (str "user name: " name))))))
 
-
 (def loginreconciler
   (om/reconciler {:state mydb/local-login
                   :parser (om/parser {:read loginread :mutate loginmutate})}))
 
 (om/add-root! loginreconciler
               LoginForm (gdom/getElement "loginform"))
-
 
 ;;; Handsontable
 (defn mytableread
@@ -148,8 +200,6 @@
                                                                        [:afterChange]
                                                                        #(do
                                                                           (let [changeData (js->clj %)]
-                                                                            ;(.log js/console "change something!!!")
-                                                                            ;(.log js/console "changeData: " changeData)
                                                                             (om/transact! this `[(settablevalue {:changeDatas ~changeData})])))))))))
 
   (componentDidUpdate [this prev-props new-props]
@@ -164,9 +214,8 @@
                                                                        [:afterChange]
                                                                        #(do
                                                                           (let [changeData (js->clj %)]
-                                                                            ;(.log js/console "change something!!!")
-                                                                            ;(.log js/console "changeData: " changeData)
                                                                             (om/transact! this `[(settablevalue {:changeDatas ~changeData})]))))))))))
+
 (def myglobaltablereconciler
   (om/reconciler {:state mydb/global-states
                   :parser (om/parser {:read mytableread :mutate mytablemutate})}))
@@ -195,7 +244,6 @@
       (swap! mydb/staticstates
              assoc
              :globalchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config))))))
-
 
 (def myglobalchartreconciler
   (om/reconciler {:state mydb/global-states}))
@@ -284,6 +332,7 @@
                                                                             ;(.log js/console "change something!!!")
                                                                             ;(.log js/console "changeData: " changeData)
                                                                             (om/transact! this `[(settablevalue {:changeDatas ~changeData})]))))))))))
+
 (def mylocaltablereconciler
   (om/reconciler {:state mydb/local-states
                   :parser (om/parser {:read mylocaltableread :mutate mylocaltablemutate})}))
@@ -313,14 +362,12 @@
              assoc
              :localchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config))))))
 
-
 (def mylocalchartreconciler
   (om/reconciler {:state mydb/local-states}))
 ;:parser (om/parser {:read mytableread :mutate mytablemutate})}))
 
 (om/add-root! mylocalchartreconciler
               MyLocalChart (gdom/getElement "mylocalchart"))
-
 
 ;; Cummulative transactions
 (defui CumTransactItem

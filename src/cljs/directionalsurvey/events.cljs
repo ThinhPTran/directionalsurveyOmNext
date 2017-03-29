@@ -50,6 +50,9 @@
           (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
                                                  :changeData changeData}])))))
 
+(defn set-history-point [idx]
+  (send-channel! [:user/set-history-point {:idx (int idx)}]))
+
 (defn handle-set-table [data]
   (swap! mydb/globalconfig assoc :tableconfig data)
   (swap! mydb/global-states assoc :tableconfig data)
@@ -149,16 +152,40 @@
 
 (defn handle-listactions-received [data]
   (let [rawdata (:result data)
-        cumactions (vec (sort #(compare (:action/instant %1) (:action/instant %2)) rawdata))
+        totalcumactions (vec (sort #(compare (:action/instant %1) (:action/instant %2)) rawdata))
         username (:user/name @mydb/local-login)
-        localactions (filterv #(= (:action/user %) username) cumactions)]
+        localactions (filterv #(= (:action/user %) username) totalcumactions)
+        Naction (count totalcumactions)]
     (.log js/console "User name: " username)
-    (.log js/console "Cummulative actions: " cumactions)
+    (.log js/console "Cummulative actions: " totalcumactions)
     (.log js/console "Local actions: " localactions)
-    (swap! mydb/global-states assoc :listactions cumactions)
+    (.log js/console "Naction: " Naction)
+    (swap! mydb/global-states assoc :totallistactions totalcumactions)
+    (swap! mydb/global-states assoc :listactions totalcumactions)
     (swap! mydb/local-states assoc :listactions localactions)
-    (handle-global-table cumactions)
+    (swap! mydb/global-states assoc :totalactions Naction)
+    (swap! mydb/global-states assoc :currentpick Naction)
+    (handle-global-table totalcumactions)
     (handle-local-table localactions)))
+
+(defn handle-set-history-point [data]
+  (let [idx (:idx data)
+        username (:user/name @mydb/local-login)
+        tottalcumactions (:totallistactions @mydb/global-states)
+        newtotalcumactions (subvec tottalcumactions 0 idx)
+        newlocalactions (filterv #(= (:action/user %) username) newtotalcumactions)
+        Naction idx]
+    (.log js/console "User name: " username)
+    (.log js/console "idx: " idx)
+    (.log js/console "totalcumactions: " tottalcumactions)
+    (.log js/console "newtotalcumactions: " newtotalcumactions)
+    (.log js/console "newlocalcumactions: " newlocalactions)
+    (swap! mydb/global-states assoc :listactions newtotalcumactions)
+    (swap! mydb/local-states assoc :listactions newlocalactions)
+    (swap! mydb/global-states assoc :currentpick Naction)
+    (handle-global-table newtotalcumactions)
+    (handle-local-table newtotalcumactions)))
+
 
 ; handle application-specific events
 (defn- app-message-received [[msgType data]]
@@ -166,6 +193,7 @@
     :user/names (swap! mydb/global-users assoc :user/names data)
     :db/table (handle-set-table data)
     :user/listactions (handle-listactions-received data)
+    :user/set-history-point (handle-set-history-point data)
     (.log js/console "Unmatched application event")))
 
 ; handle websocket-connection-specific events

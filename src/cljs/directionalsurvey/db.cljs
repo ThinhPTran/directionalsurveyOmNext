@@ -29,7 +29,10 @@
 
 (def global-states
   (atom {:name "Global cummulative states"
+         :totalactions 0
+         :currentpick 0
          :tableconfig init-tableconfig
+         :totallistactions nil
          :listactions nil}))
 
 (def local-states
