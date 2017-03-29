@@ -398,6 +398,5 @@
               CumTransacts (gdom/getElement "cumtransaction"))
 
 
-
 (defn ^:export init []
   (dev-setup))

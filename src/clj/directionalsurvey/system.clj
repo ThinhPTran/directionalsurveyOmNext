@@ -28,6 +28,12 @@
   (def channel-send! send-fn)
   (def connected-uids connected-uids))
 
+;; We can watch this atom for changes if we like
+(add-watch connected-uids :connected-uids
+           (fn [_ _ old new]
+             (when (not= old new)
+               (log/warn "Connected uids change: %s" new))))
+
 (defn gentabledata [len]
   (reduce #(conj %1 [%2 %2 0])
           []

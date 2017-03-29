@@ -184,7 +184,7 @@
     (swap! mydb/local-states assoc :listactions newlocalactions)
     (swap! mydb/global-states assoc :currentpick Naction)
     (handle-global-table newtotalcumactions)
-    (handle-local-table newtotalcumactions)))
+    (handle-local-table newlocalactions)))
 
 
 ; handle application-specific events
