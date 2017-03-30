@@ -223,12 +223,18 @@
   Object
   (render [this]
     (let [{:keys [tableconfig]} (om/props this)
-          my-chart-config (utils/gen-chart-config-handson tableconfig)]
+          my-chart-config (utils/gen-chart-config-handson tableconfig)
+          chart (atom {:chart nil})]
       (dom/div
         #js {:style {:height "100%" :width "100%" :position "relative"}
              :ref (fn [mydiv]
                     (if (some? mydiv)
-                      (js/Highcharts.Chart. mydiv (clj->js @my-chart-config))))}))))
+                      (swap! chart assoc :chart (js/Highcharts.Chart. mydiv (clj->js @my-chart-config)))
+                      (let [mychart (:chart @chart)]
+                        (if (some? mychart)
+                          (do
+                            (.destroy mychart)
+                            (swap! chart :chart nil))))))}))))
 
 (def myglobalchartreconciler
   (om/reconciler {:state mydb/global-states}))
@@ -317,12 +323,18 @@
   Object
   (render [this]
     (let [{:keys [tableconfig]} (om/props this)
-          my-chart-config (utils/gen-chart-config-handson tableconfig)]
+          my-chart-config (utils/gen-chart-config-handson tableconfig)
+          chart (atom {:chart nil})]
       (dom/div
         #js {:style {:height "100%" :width "100%" :position "relative"}
              :ref (fn [mydiv]
                     (if (some? mydiv)
-                      (js/Highcharts.Chart. mydiv (clj->js @my-chart-config))))}))))
+                      (swap! chart assoc :chart (js/Highcharts.Chart. mydiv (clj->js @my-chart-config)))
+                      (let [mychart (:chart @chart)]
+                        (if (some? mychart)
+                          (do
+                            (.destroy mychart)
+                            (swap! chart :chart nil))))))}))))
 
 (def mylocalchartreconciler
   (om/reconciler {:state mydb/local-states}))

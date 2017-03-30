@@ -36,5 +36,6 @@
     (log/info "starting change monitor")
     (future (sys/change-monitor (:change-queue db))))
   (log/info "starting server")
+  ;(server/run-server app {:ip "192.168.1.17" :port 3000})
   (server/run-server app {:port 3000})
   (log/info "server started. http://localhost:3000"))
