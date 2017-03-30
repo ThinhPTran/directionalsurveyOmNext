@@ -8,12 +8,6 @@
                        :rowHeaders  false
                        :contextMenu true})
 
-; reactive atom that manages our application state
-(def staticstates (atom {:globaltable nil
-                         :globalchart nil
-                         :localtable nil
-                         :localchart nil}))
-
 (def globalconfig
   (atom {:tableconfig init-tableconfig}))
 

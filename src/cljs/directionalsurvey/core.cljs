@@ -183,38 +183,33 @@
              ;(.log js/console "mytablemutate: " changeDatas)
              (events/set-table-value changeDatas))})
 
+;(defui MyGlobalTable
 (defui MyGlobalTable
   static om/IQuery
   (query [this]
     [:tableconfig])
   Object
   (render [this]
-    (dom/div
-      #js {:style {:min-width "310px" :max-width "800px" :margin "0 auto"}}))
-  (componentDidMount [this]
-    (let [{:keys [tableconfig]} (om/props this)]
-      (swap! mydb/staticstates
-             assoc
-             :globaltable (js/Handsontable (dom/node this) (clj->js
-                                                             (assoc-in tableconfig
-                                                                       [:afterChange]
-                                                                       #(do
-                                                                          (let [changeData (js->clj %)]
-                                                                            (om/transact! this `[(settablevalue {:changeDatas ~changeData})])))))))))
-
-  (componentDidUpdate [this prev-props new-props]
     (let [{:keys [tableconfig]} (om/props this)
-          table (:globaltable @mydb/staticstates)]
-      (.log js/console "MyGlobalTable: componentDidUpdate")
-      (.destroy table)
-      (swap! mydb/staticstates
-             assoc
-             :globaltable (js/Handsontable (dom/node this) (clj->js
-                                                             (assoc-in tableconfig
-                                                                       [:afterChange]
-                                                                       #(do
-                                                                          (let [changeData (js->clj %)]
-                                                                            (om/transact! this `[(settablevalue {:changeDatas ~changeData})]))))))))))
+          table (atom {:table nil})]
+      (dom/div
+        #js {:style {:min-width "310px" :max-width "800px" :margin "0 auto"}
+             :ref (fn [mydiv]
+                    (if (some? mydiv)
+                       (swap! table assoc :table (js/Handsontable mydiv (clj->js
+                                                                          (assoc-in tableconfig
+                                                                                    [:afterChange]
+                                                                                    #(do
+                                                                                       (let [changeData (js->clj %)]
+                                                                                         (om/transact! this `[(settablevalue {:changeDatas ~changeData})])))))))
+                       (let [mytable (:table @table)]
+                         (if (some? mytable)
+                           (do
+                             (.destroy mytable)
+                             (swap! table assoc :table nil))))))}))))
+
+
+
 
 (def myglobaltablereconciler
   (om/reconciler {:state mydb/global-states
@@ -223,27 +218,17 @@
 (om/add-root! myglobaltablereconciler
               MyGlobalTable (gdom/getElement "myglobaltable"))
 
-;; Highchart
+;;; Highchart
 (defui MyGlobalChart
   Object
   (render [this]
-    (dom/div
-      #js {:style {:height "100%" :width "100%" :position "relative"}}))
-  (componentDidMount [this]
     (let [{:keys [tableconfig]} (om/props this)
           my-chart-config (utils/gen-chart-config-handson tableconfig)]
-      (swap! mydb/staticstates
-             assoc
-             :globalchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config)))))
-  (componentDidUpdate [this prev-props new-props]
-    (let [{:keys [tableconfig]} (om/props this)
-          my-chart-config (utils/gen-chart-config-handson tableconfig)
-          chart (:globalchart @mydb/staticstates)]
-      ;(.log js/console "My global chart componentDidUpdate")
-      (.destroy chart)
-      (swap! mydb/staticstates
-             assoc
-             :globalchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config))))))
+      (dom/div
+        #js {:style {:height "100%" :width "100%" :position "relative"}
+             :ref (fn [mydiv]
+                    (if (some? mydiv)
+                      (js/Highcharts.Chart. mydiv (clj->js @my-chart-config))))}))))
 
 (def myglobalchartreconciler
   (om/reconciler {:state mydb/global-states}))
@@ -302,36 +287,23 @@
     [:tableconfig])
   Object
   (render [this]
-    (dom/div
-      #js {:style {:min-width "310px" :max-width "800px" :margin "0 auto"}}))
-  (componentDidMount [this]
-    (let [{:keys [tableconfig]} (om/props this)]
-      (swap! mydb/staticstates
-             assoc
-             :localtable (js/Handsontable (dom/node this) (clj->js
-                                                             (assoc-in tableconfig
-                                                                       [:afterChange]
-                                                                       #(do
-                                                                          (let [changeData (js->clj %)]
-                                                                            ;(.log js/console "change something!!!")
-                                                                            ;(.log js/console "changeData: " changeData)
-                                                                            (om/transact! this `[(settablevalue {:changeDatas ~changeData})])))))))))
-
-  (componentDidUpdate [this prev-props new-props]
     (let [{:keys [tableconfig]} (om/props this)
-          table (:localtable @mydb/staticstates)]
-      (.log js/console "MyLocalTable: componentDidUpdate")
-      (.destroy table)
-      (swap! mydb/staticstates
-             assoc
-             :localtable (js/Handsontable (dom/node this) (clj->js
-                                                             (assoc-in tableconfig
-                                                                       [:afterChange]
-                                                                       #(do
-                                                                          (let [changeData (js->clj %)]
-                                                                            ;(.log js/console "change something!!!")
-                                                                            ;(.log js/console "changeData: " changeData)
-                                                                            (om/transact! this `[(settablevalue {:changeDatas ~changeData})]))))))))))
+          table (atom {:table nil})]
+      (dom/div
+        #js {:style {:min-width "310px" :max-width "800px" :margin "0 auto"}
+             :ref (fn [mydiv]
+                    (if (some? mydiv)
+                      (swap! table assoc :table (js/Handsontable mydiv (clj->js
+                                                                         (assoc-in tableconfig
+                                                                                   [:afterChange]
+                                                                                   #(do
+                                                                                      (let [changeData (js->clj %)]
+                                                                                        (om/transact! this `[(settablevalue {:changeDatas ~changeData})])))))))
+                      (let [mytable (:table @table)]
+                        (if (some? mytable)
+                          (do
+                            (.destroy mytable)
+                            (swap! table assoc :table nil))))))}))))
 
 (def mylocaltablereconciler
   (om/reconciler {:state mydb/local-states
@@ -344,27 +316,16 @@
 (defui MyLocalChart
   Object
   (render [this]
-    (dom/div
-      #js {:style {:height "100%" :width "100%" :position "relative"}}))
-  (componentDidMount [this]
     (let [{:keys [tableconfig]} (om/props this)
           my-chart-config (utils/gen-chart-config-handson tableconfig)]
-      (swap! mydb/staticstates
-             assoc
-             :localchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config)))))
-  (componentDidUpdate [this prev-props new-props]
-    (let [{:keys [tableconfig]} (om/props this)
-          my-chart-config (utils/gen-chart-config-handson tableconfig)
-          chart (:localchart @mydb/staticstates)]
-      ;(.log js/console "My local chart componentDidUpdate")
-      (.destroy chart)
-      (swap! mydb/staticstates
-             assoc
-             :localchart (js/Highcharts.Chart. (dom/node this) (clj->js @my-chart-config))))))
+      (dom/div
+        #js {:style {:height "100%" :width "100%" :position "relative"}
+             :ref (fn [mydiv]
+                    (if (some? mydiv)
+                      (js/Highcharts.Chart. mydiv (clj->js @my-chart-config))))}))))
 
 (def mylocalchartreconciler
   (om/reconciler {:state mydb/local-states}))
-;:parser (om/parser {:read mytableread :mutate mytablemutate})}))
 
 (om/add-root! mylocalchartreconciler
               MyLocalChart (gdom/getElement "mylocalchart"))
