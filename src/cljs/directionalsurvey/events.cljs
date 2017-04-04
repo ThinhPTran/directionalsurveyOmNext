@@ -25,7 +25,9 @@
   (if (str/blank? name)
     (js/alert "Please enter a user name")
     (do
-      (.log js/console (str "Logging in with user: " name)))))
+      (.log js/console (str "Logging in with user: " name))
+      (swap! mydb/local-login assoc :user/name name)
+      (send-channel! [:user/ident {:name name}]))))
       ;(encore/ajax-lite "/login"
       ;                 {:method :post
       ;                  :headers {:X-CSRF-Token (:csrf-token @receive-channel)}
@@ -155,18 +157,25 @@
         totalcumactions (vec (sort #(compare (:action/instant %1) (:action/instant %2)) rawdata))
         username (:user/name @mydb/local-login)
         localactions (filterv #(= (:action/user %) username) totalcumactions)
-        Naction (count totalcumactions)]
-    (.log js/console "User name: " username)
-    (.log js/console "Cummulative actions: " totalcumactions)
-    (.log js/console "Local actions: " localactions)
-    (.log js/console "Naction: " Naction)
-    (swap! mydb/global-states assoc :totallistactions totalcumactions)
-    (swap! mydb/global-states assoc :listactions totalcumactions)
-    (swap! mydb/local-states assoc :listactions localactions)
-    (swap! mydb/global-states assoc :totalactions Naction)
-    (swap! mydb/global-states assoc :currentpick Naction)
-    (handle-global-table totalcumactions)
-    (handle-local-table localactions)))
+        Naction (count totalcumactions)
+        myinitconfig (:tableconfig @mydb/globalconfig)]
+    (if (some? username)
+      (do
+        (.log js/console "User name: " username)
+        (.log js/console "Cummulative actions: " totalcumactions)
+        (.log js/console "Local actions: " localactions)
+        (.log js/console "Naction: " Naction)
+        (swap! mydb/global-states assoc :totallistactions totalcumactions)
+        (swap! mydb/global-states assoc :listactions totalcumactions)
+        (swap! mydb/local-states assoc :listactions localactions)
+        (swap! mydb/global-states assoc :totalactions Naction)
+        (swap! mydb/global-states assoc :currentpick Naction)
+        (handle-global-table totalcumactions)
+        (handle-local-table localactions))
+      (do
+        (.log js/console "Not signed in!!!")
+        (swap! mydb/global-states assoc :tableconfig myinitconfig)
+        (swap! mydb/local-states assoc :tableconfig myinitconfig)))))
 
 (defn handle-set-history-point [data]
   (let [idx (:idx data)
@@ -199,7 +208,7 @@
 ; handle websocket-connection-specific events
 (defn- channel-state-message-received [state]
   (if (:first-open? state)
-    (let [name (rand-nth possible-usernames)]
+    (let [name nil];;(rand-nth possible-usernames)
       (swap! mydb/local-login assoc :user/name name)
       (send-channel! [:user/ident {:name name}]))))
 

@@ -48,20 +48,28 @@
 
 ;; Handle messages
 (defn- handle-user-ident [db-connection data]
-  @(d/transact db-connection
-               [{:db/id #db/id[:db.part/user]
-                 :user/name (:name data)}])
-                 ;:user/uid rcv-chan}])
-  (let [mydb (d/db db-connection)
-        rawdata (q '[:find [(pull ?e [:user/name]) ...]
-                     :where [?e :user/name]]
-                   mydb)
-        usernames (mapv (fn [in]
-                         (:user/name in)) rawdata)]
-    ;(log/warn "rawdata: " usernames)
-    (doseq [uid (:any @connected-uids)]
-       (channel-send! uid [:user/names usernames])
-       (channel-send! uid [:db/table @tableconfig])))
+  (let [username (:name data)]
+    (when (some? username)
+      (do
+        @(d/transact db-connection
+                     [{:db/id #db/id[:db.part/user]
+                       :user/name (:name data)}])
+        ;:user/uid rcv-chan}])
+        (let [mydb (d/db db-connection)
+              rawdata (q '[:find [(pull ?e [:user/name]) ...]
+                           :where [?e :user/name]]
+                         mydb)
+              usernames (mapv (fn [in]
+                                (:user/name in)) rawdata)]
+          ;(log/warn "rawdata: " usernames)
+          (doseq [uid (:any @connected-uids)]
+            (channel-send! uid [:user/names usernames]))))))
+
+  ;; Send table
+  (doseq [uid (:any @connected-uids)]
+     (channel-send! uid [:db/table @tableconfig]))
+
+  ;; Send list of actions
   (let [mydb (d/db db-connection)
         result (q '[:find [(pull ?e [:action/user :action/row :action/column :action/newval :action/instant]) ...]
                     :where [?e :action/user]]
@@ -75,23 +83,28 @@
         rowIdx (get changeData 0)
         colIdx (get changeData 1)
         newVal (Double/parseDouble (nth changeData 3))]
-    (log/warn "user: " username " rowIdx: " rowIdx " colIdx: " colIdx " newVal: " newVal)
-    ;(cond
-    ;  (= 0 column) (handle-user-change-MD db-connection username changeData)
-    ;  (= 1 column) (handle-user-change-TVD db-connection username changeData)
-    ;  (= 2 column) (handle-user-change-Deviation db-connection username changeData)
-    ;  :else (handle-user-default db-connection changeData))
-    @(d/transact db-connection
+    (when (some? username)
+      (do
+        (log/warn "user: " username " rowIdx: " rowIdx " colIdx: " colIdx " newVal: " newVal)
+        ;(cond
+        ;  (= 0 column) (handle-user-change-MD db-connection username changeData)
+        ;  (= 1 column) (handle-user-change-TVD db-connection username changeData)
+        ;  (= 2 column) (handle-user-change-Deviation db-connection username changeData)
+        ;  :else (handle-user-default db-connection changeData))
+        @(d/transact db-connection
                      [{:db/id #db/id[:db.part/user]
                        :action/user     username
                        :action/row      rowIdx
                        :action/column   colIdx
                        :action/newval   newVal
-                       :action/instant  (now)}])
+                       :action/instant  (now)}])))
+
+    ;; Send list of actions
+
     (let [mydb (d/db db-connection)
           result (q '[:find [(pull ?e [:action/user :action/row :action/column :action/newval :action/instant]) ...]
                       :where [?e :action/user]]
-                     mydb)]
+                    mydb)]
       (log/warn "raw actions: " result)
       (doseq [uid (:any @connected-uids)]
         (channel-send! uid [:user/listactions {:result result}])))))
