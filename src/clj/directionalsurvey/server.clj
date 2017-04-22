@@ -1,17 +1,28 @@
 (ns directionalsurvey.server
   (:require [org.httpkit.server :as server]
-            [ring.util.response :as response]
+            [ring.util.response :refer [response resource-response]]
+            [ring.util.request :refer [body-string]]
             [clojure.tools.logging :as log]
+            [ring.middleware.json :as middleware]
             [compojure.core :refer :all]
             [compojure.handler :as handler]
             [compojure.route :as route]
-            [directionalsurvey.system :as sys])
+            [directionalsurvey.system :as sys]
+            [com.walmartlabs.lacinia :as ql]
+            [directionalsurvey.schema :as schema])
   (:gen-class))
 
+(defn post-ws-handler [request]
+  (let [body (body-string request)]
+    (log/info "post-ws-handler: " body)
+    ;(response body)
+    (response (ql/execute schema/star-wars-schema (str body) nil nil))))
+
 (defroutes app-routes
-  (GET "/" [] (response/resource-response "public/index.html"))
+  (GET "/" [] (resource-response "public/index.html"))
   (GET  "/channel" req (sys/ring-ws-handoff req))
   (POST "/channel" req (sys/ring-ws-post req))
+  (POST "/graphql" req (post-ws-handler req))
   (route/resources "/")
   (route/not-found "404! :("))
 
@@ -26,7 +37,9 @@
 (def app 
   (-> app-routes
       (handler/site)
-      (wrap-request-logging)))
+      (wrap-request-logging)
+      ;(middleware/wrap-json-body {:keywords? true})
+      middleware/wrap-json-response))
 
 (defn -main [& args]
   (log/info "creating db")
@@ -36,6 +49,6 @@
     (log/info "starting change monitor")
     (future (sys/change-monitor (:change-queue db))))
   (log/info "starting server")
-  (server/run-server app {:ip "192.168.1.17" :port 3000})
-  ;(server/run-server app {:port 3000})
+  ;;(server/run-server app {:ip "10.6.11.46" :port 3000})
+  (server/run-server app {:port 3000})
   (log/info "server started. http://localhost:3000"))
