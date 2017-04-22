@@ -1,6 +1,11 @@
 (ns directionalsurvey.db
   (:require
+    [datomic.api :as d :refer [db q]]
+    [clojure.tools.logging :as log]
     [com.walmartlabs.lacinia.schema :as schema]))
+
+(def datastore (atom {:db-connection nil
+                       :change-queue nil}))
 
 (def ^:private humans-data
   (atom   [{:id          "1000"
@@ -88,6 +93,20 @@
   [ctx args value]
   (let [tag-droids-data (map #(schema/tag-with-type % :droid) @droids-data)]
     tag-droids-data))
+
+(defn resolve-users
+  [ctx args value]
+  (let [db-connection (:db-connection @datastore)
+        mydb (d/db db-connection)
+        rawdata (q '[:find [(pull ?e [:user/name :user/password]) ...]
+                     :where [?e :user/name]]
+                   mydb)
+        tmpusers (mapv (fn [in]
+                          {:name (:user/name in)
+                           :password  (:user/password in)}) rawdata)
+        users (map #(schema/tag-with-type % :user) tmpusers)]
+    (log/info users)
+    users))
 
 (defn resolve-mutate-human
   [ctx args value]

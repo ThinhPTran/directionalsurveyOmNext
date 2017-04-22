@@ -1,6 +1,10 @@
 (ns directionalsurvey.system
   (:require [taoensso.sente :as sente]
             [clojure.tools.logging :as log]
+            [ring.util.response :refer [response resource-response]]
+            [ring.util.request :refer [body-string]]
+            [com.walmartlabs.lacinia :as ql]
+            [directionalsurvey.schema :as schema]
             [datomic.api :as d :refer [db q]]))
 
 (defn now [] (new java.util.Date))
@@ -47,13 +51,20 @@
                          :contextMenu true}))
 
 ;; Handle messages
+(defn post-ws-handler [request]
+  (let [body (body-string request)]
+    (log/info "post-ws-handler: " body)
+    ;(response body)
+    (response (ql/execute schema/star-wars-schema (str body) nil nil))))
+
 (defn- handle-user-ident [db-connection data]
   (let [username (:name data)]
     (when (some? username)
       (do
         @(d/transact db-connection
                      [{:db/id #db/id[:db.part/user]
-                       :user/name (:name data)}])
+                       :user/name (:name data)
+                       :user/password (str (rand))}])
         ;:user/uid rcv-chan}])
         (let [mydb (d/db db-connection)
               rawdata (q '[:find [(pull ?e [:user/name]) ...]
@@ -132,3 +143,5 @@
   ;  (log/info "monitor loop"))
     ;(handle-change change-queue))
   (log/info "monitoring complete"))
+
+

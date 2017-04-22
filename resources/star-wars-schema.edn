@@ -26,7 +26,10 @@
                                           :resolve :resolve-friends}
                             :home_planet {:type String}}}
               :echoed_value
-              {:fields     {:value {:type String}}}}
+              {:fields     {:value {:type String}}}
+              :user
+              {:fields     {:name        {:type String}
+                            :password    {:type String}}}}
  :queries    {
               :hero
               {:type    (non-null :character)
@@ -47,7 +50,10 @@
                :resolve :resolve-humans}
               :droids
               {:type    (list :droid)
-               :resolve :resolve-droids}}
+               :resolve :resolve-droids}
+              :users
+              {:type    (list user)
+               :resolve :resolve-users}}
  :mutations  {
               :createHuman
               {:type    (list :human)
