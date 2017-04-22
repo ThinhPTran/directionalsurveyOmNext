@@ -1,4 +1,4 @@
-Basic setup with Datomic Sente and Reagent
+Basic setup with Datomic Sente and Om.Next
 =========
 
 * Clojure and ClojureScript
