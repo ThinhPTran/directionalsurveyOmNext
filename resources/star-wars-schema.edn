@@ -25,8 +25,12 @@
                             :friends     {:type (list :character)
                                           :resolve :resolve-friends}
                             :home_planet {:type String}}}
-              :echoed_value
-              {:fields     {:value {:type String}}}
+              :action
+              {:fields     {:user        {:type String}
+                            :row         {:type Int}
+                            :col         {:type Int}
+                            :val         {:type Float}
+                            :inst        {:type String}}}
               :user
               {:fields     {:name        {:type String}
                             :password    {:type String}}}}
@@ -53,7 +57,10 @@
                :resolve :resolve-droids}
               :users
               {:type    (list user)
-               :resolve :resolve-users}}
+               :resolve :resolve-users}
+              :actions
+              {:type    (list action)
+               :resolve :resolve-actions}}
  :mutations  {
               :createHuman
               {:type    (list :human)

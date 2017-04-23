@@ -108,6 +108,24 @@
     (log/info users)
     users))
 
+(defn resolve-actions
+  [ctx args value]
+  (let [db-connection (:db-connection @datastore)
+        mydb (d/db db-connection)
+        rawdata (q '[:find [(pull ?e [:action/user :action/row :action/column :action/newval :action/instant]) ...]
+                     :where [?e :action/user]]
+                   mydb)
+        tmpactions (mapv (fn [in]
+                           {:user (:action/user in)
+                            :row  (:action/row in)
+                            :col  (:action/column in)
+                            :val  (:action/newval in)
+                            :inst (:action/instant in)}) rawdata)
+        actions (map #(schema/tag-with-type % :action) tmpactions)]
+    (log/info actions)
+    actions))
+
+
 (defn resolve-mutate-human
   [ctx args value]
   (let [id (:id args)

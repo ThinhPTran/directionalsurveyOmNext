@@ -16,5 +16,6 @@
                          :resolve-droids         db/resolve-droids
                          :resolve-friends        db/resolve-friends
                          :resolve-users          db/resolve-users
+                         :resolve-actions        db/resolve-actions
                          :resolve-mutate-human   db/resolve-mutate-human})
       schema/compile))
