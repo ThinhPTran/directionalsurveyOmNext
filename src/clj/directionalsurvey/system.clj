@@ -111,11 +111,11 @@
                        :action/instant  (now)}])))
 
     ;; Send list of actions
-
     (let [mydb (d/db db-connection)
-          result (q '[:find [(pull ?e [:action/user :action/row :action/column :action/newval :action/instant]) ...]
-                      :where [?e :action/user]]
-                    mydb)]
+          tmpresult (q '[:find [(pull ?e [:action/user :action/row :action/column :action/newval :action/instant]) ...]
+                         :where [?e :action/user]]
+                       mydb)
+          result (vec (sort #(compare (:action/instant %1) (:action/instant %2)) tmpresult))]
       (log/warn "raw actions: " result)
       (doseq [uid (:any @connected-uids)]
         (channel-send! uid [:user/listactions {:result result}])))))
