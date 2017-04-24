@@ -1,0 +1,18 @@
+{
+ :objects    {
+              :action
+              {:fields     {:user        {:type String}
+                            :row         {:type Int}
+                            :col         {:type Int}
+                            :val         {:type Float}
+                            :inst        {:type String}}}
+              :user
+              {:fields     {:name        {:type String}
+                            :password    {:type String}}}}
+ :queries    {
+              :users
+              {:type    (list user)
+               :resolve :resolve-users}
+              :actions
+              {:type    (list action)
+               :resolve :resolve-actions}}}
