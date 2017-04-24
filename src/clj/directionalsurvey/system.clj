@@ -5,18 +5,8 @@
             [ring.util.request :refer [body-string]]
             [com.walmartlabs.lacinia :as ql]
             [directionalsurvey.schema :as schema]
-            [datomic.api :as d :refer [db q]]))
-
-(defn now [] (new java.util.Date))
-
-;datomic setup
-(defn create-db [url]
-  (d/create-database url)
-  (let [schema (read-string (slurp "resources/directionalsurvey.edn"))
-        conn (d/connect url)]
-    (d/transact conn schema)
-    {:db-connection conn
-     :change-queue (d/tx-report-queue conn)}))
+            [datomic.api :as d :refer [db q]]
+            [directionalsurvey.db :as mydb]))
 
 ;sente setup, This function will be called whenever a new channel is open
 (defn- get-user-id [request] 
@@ -54,7 +44,6 @@
 (defn post-ws-handler [request]
   (let [body (body-string request)]
     (log/info "post-ws-handler: " body)
-    ;(response body)
     (response (ql/execute schema/star-wars-schema (str body) nil nil))))
 
 (defn- handle-user-ident [db-connection data]
@@ -97,18 +86,13 @@
     (when (some? username)
       (do
         (log/warn "user: " username " rowIdx: " rowIdx " colIdx: " colIdx " newVal: " newVal)
-        ;(cond
-        ;  (= 0 column) (handle-user-change-MD db-connection username changeData)
-        ;  (= 1 column) (handle-user-change-TVD db-connection username changeData)
-        ;  (= 2 column) (handle-user-change-Deviation db-connection username changeData)
-        ;  :else (handle-user-default db-connection changeData))
         @(d/transact db-connection
                      [{:db/id #db/id[:db.part/user]
                        :action/user     username
                        :action/row      rowIdx
                        :action/column   colIdx
                        :action/newval   newVal
-                       :action/instant  (now)}])))
+                       :action/instant  (mydb/now)}])))
 
     ;; Send list of actions
     (let [mydb (d/db db-connection)

@@ -34,7 +34,7 @@
 
 (defn -main [& args]
   (log/info "creating db")
-  (let [db (sys/create-db "datomic:mem://directionalsurvey")]
+  (let [db (mydb/create-db "datomic:mem://directionalsurvey")]
     (log/info "starting router")
     (sys/ws-message-router (:db-connection db))
     (log/info "starting change monitor")

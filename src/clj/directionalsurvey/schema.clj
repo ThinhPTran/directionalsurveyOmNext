@@ -10,5 +10,7 @@
       slurp
       edn/read-string
       (attach-resolvers {:resolve-users          db/resolve-users
-                         :resolve-actions        db/resolve-actions})
+                         :resolve-actions        db/resolve-actions
+                         :resolve-mutate-user    db/resolve-mutate-user
+                         :resolve-mutate-action   db/resolve-mutate-action})
       schema/compile))

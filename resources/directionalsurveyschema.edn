@@ -15,4 +15,21 @@
                :resolve :resolve-users}
               :actions
               {:type    (list action)
-               :resolve :resolve-actions}}}
+               :resolve :resolve-actions}}
+ :mutations   {:createUser
+               {:type   (list :user)
+                :args   {:name       {:type   (non-null String)}
+                         :password   {:type   (non-null String)}}
+                :resolve :resolve-mutate-user}
+               :createAction
+               {:type   (list :action)
+                :args   {:user       {:type   (non-null String)}
+                         :row        {:type   (non-null Int)}
+                         :col        {:type   (non-null Int)}
+                         :val        {:type   (non-null Float)}}
+                :resolve :resolve-mutate-action}}}
+
+
+
+
+
