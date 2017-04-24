@@ -12,6 +12,5 @@ https://www.youtube.com/watch?v=z3sh7KfQZ0c
 Running the Application
 =======================
 
-1. Install Datomic
-2. ``lein run``
-3. Open http://localhost:3000
+1. ``lein run``
+2. Open http://localhost:3000
