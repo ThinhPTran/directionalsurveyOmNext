@@ -186,7 +186,7 @@
   [{:keys [state] :as env} key {:keys [changeDatas]}]
   {:action (fn []
              ;(.log js/console "mytablemutate: " changeDatas)
-             (events/set-table-value changeDatas))})
+             (events/set-action changeDatas))})
 
 ;(defui MyGlobalTable
 (defui MyGlobalTable
@@ -290,7 +290,7 @@
   [{:keys [state] :as env} key {:keys [changeDatas]}]
   {:action (fn []
              ;(.log js/console "mytablemutate: " changeDatas)
-             (events/set-table-value changeDatas))})
+             (events/set-action changeDatas))})
 
 (defui MyLocalTable
   static om/IQuery

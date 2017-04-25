@@ -57,15 +57,21 @@
     (let [queryString (gstring/format "query { actions { user row col val inst}}")]
       (send-channel! [:user/graphql {:query :actions :queryString queryString}]))))
 
-;; Event handler definitions
-(defn set-table-value [changeDatas]
-  (if (some? changeDatas)
-    (do
-      (.log js/console "set-table-value: " changeDatas)
-      (doseq [changeData changeDatas]
-          (send-channel! [:user/set-table-value {:username (:user/name @mydb/local-login)
-                                                 :changeData changeData}])))))
+(defn set-action [changeDatas]
+  (.log js/console "set-action: " changeDatas)
+  (if (and changeDatas (some? (:user/name @mydb/local-login)))
+    (doseq [changeData changeDatas]
+      (let [changeData (first changeDatas)
+            user (:user/name @mydb/local-login)
+            row (get changeData 0)
+            col (get changeData 1)
+            val (js/parseFloat (nth changeData 3))
+            queryString (gstring/format "mutation { createAction(user: \"%s\" row: \"%d\" col: \"%d\" val: \"%f\") { user row col val inst }}" user row col val)]
+        (.log js/console "queryString: " queryString)
+        (send-channel! [:user/graphql {:mutation :createAction :queryString queryString}])))))
 
+
+;; Event handler definitions
 (defn set-history-point [idx]
   (send-channel! [:user/set-history-point {:idx (int idx)}]))
 
@@ -161,30 +167,6 @@
                                  (handle-table-actions indata action)) myinitconfig data)]
     (swap! mydb/local-states assoc :tableconfig newtableconfig)))
 
-(defn handle-listactions-received [data]
-  (let [totalcumactions (:result data)
-        username (:user/name @mydb/local-login)
-        localactions (filterv #(= (:user %) username) totalcumactions)
-        Naction (count totalcumactions)
-        myinitconfig (:tableconfig @mydb/globalconfig)]
-    (if (some? username)
-      (do
-        (.log js/console "User name: " username)
-        (.log js/console "Cummulative actions: " totalcumactions)
-        (.log js/console "Local actions: " localactions)
-        (.log js/console "Naction: " Naction)
-        (swap! mydb/global-states assoc :totallistactions totalcumactions)
-        (swap! mydb/global-states assoc :listactions totalcumactions)
-        (swap! mydb/local-states assoc :listactions localactions)
-        (swap! mydb/global-states assoc :totalactions Naction)
-        (swap! mydb/global-states assoc :currentpick Naction)
-        (handle-global-table totalcumactions)
-        (handle-local-table localactions))
-      (do
-        (.log js/console "Not signed in!!!")
-        (swap! mydb/global-states assoc :tableconfig myinitconfig)
-        (swap! mydb/local-states assoc :tableconfig myinitconfig)))))
-
 (defn handle-set-history-point [data]
   (let [idx (:idx data)
         username (:user/name @mydb/local-login)
@@ -241,6 +223,31 @@
   (swap! mydb/global-states assoc :tableconfig data)
   (swap! mydb/local-states assoc :tableconfig data))
 
+(defn- handle-createAction [rawdata]
+  (.log js/console "handle-createAction: " rawdata)
+  (let [totalcumactions rawdata
+        username (:user/name @mydb/local-login)
+        localactions (filterv #(= (:user %) username) totalcumactions)
+        Naction (count totalcumactions)
+        myinitconfig (:tableconfig @mydb/globalconfig)]
+    (if (some? username)
+      (do
+        (.log js/console "User name: " username)
+        (.log js/console "Cummulative actions: " totalcumactions)
+        (.log js/console "Local actions: " localactions)
+        (.log js/console "Naction: " Naction)
+        (swap! mydb/global-states assoc :totallistactions totalcumactions)
+        (swap! mydb/global-states assoc :listactions totalcumactions)
+        (swap! mydb/local-states assoc :listactions localactions)
+        (swap! mydb/global-states assoc :totalactions Naction)
+        (swap! mydb/global-states assoc :currentpick Naction)
+        (handle-global-table totalcumactions)
+        (handle-local-table localactions))
+      (do
+        (.log js/console "Not signed in!!!")
+        (swap! mydb/global-states assoc :tableconfig myinitconfig)
+        (swap! mydb/local-states assoc :tableconfig myinitconfig)))))
+
 (defn- handle-user-graphql [rawdata]
   (let [msg-id (first (keys rawdata))
         data (first (vals rawdata))]
@@ -251,6 +258,7 @@
       :setTable (handle-setTable data)
       :users (handle-users data)
       :actions (handle-actions data)
+      :createAction (handle-createAction data)
       (.log js/console "Unmatched graphql event"))))
 
 ; handle application-specific events
