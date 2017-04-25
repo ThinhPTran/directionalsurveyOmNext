@@ -13,6 +13,21 @@
     (println "dev mode")))
 
 ;; User names
+(defn usernamesread
+  [{:keys [state] :as env} key params]
+  (let [st @state]
+    (if-let [[_ v] (find st key)]
+      {:value v}
+      {:value :not-found})))
+
+(defmulti usernamesmutate om/dispatch)
+
+(defmethod usernamesmutate `get-usernames
+  [{:keys [state] :as env} key params]
+  {:action
+   (fn []
+     (events/get-usernames))})
+
 (defui UserItems
   Object
   (render [this]
@@ -22,41 +37,31 @@
 (def ui-useritems (om/factory UserItems {:keyfn :name}))
 
 (defui UserNames
+  static om/IQuery
+  (query [_]
+    [:user/names])
   Object
   (render [this]
     (let [{:keys [user/names]} (om/props this)]
       (dom/div nil
                (dom/h2 nil "User names: ")
-               ;(dom/div nil (str (om/props this)))
+               (dom/button
+                 #js {:id "btn-login"
+                      :type "button"
+                      :onClick (fn [_]
+                                 (om/transact! this `[(get-usernames)]))}
+                 "Get usernames")
                (apply dom/ul nil
                             (map #(ui-useritems {:react-key %
                                                  :name %})
                                  names))))))
 
 (def usernamesreconciler
-  (om/reconciler {:state mydb/global-users}))
+  (om/reconciler {:state mydb/global-users
+                  :parser (om/parser {:read usernamesread :mutate usernamesmutate})}))
 
 (om/add-root! usernamesreconciler
               UserNames (gdom/getElement "usernames"))
-
-;; Counter
-;(defui Counter
-;  Object
-;  (render [this]
-;    (let [{:keys [count]} (om/props this)]
-;      (dom/div nil
-;               (dom/h2 nil (str "Count: " count))
-;               (dom/button
-;                 #js {:onClick
-;                      (fn [e]
-;                        (swap! mydb/local-count update-in [:count] inc))}
-;                 "Click me!")))))
-;
-;(def counterreconciler
-;  (om/reconciler {:state mydb/local-count}))
-;
-;(om/add-root! counterreconciler
-;              Counter (gdom/getElement "counter"))
 
 ;; Slider
 (defn mysliderread
@@ -259,9 +264,9 @@
                (dom/h2 nil "Local actions: ")
                ;(dom/div nil (str (om/props this)))
                (apply dom/ul nil
-                      (map #(ui-localtransactitems {:react-key (:action/instant %)
-                                                    :name (:action/user %)
-                                                    :instant (:action/instant %)})
+                      (map #(ui-localtransactitems {:react-key (:inst %)
+                                                    :name (:user %)
+                                                    :instant (:inst %)})
                            listactions))))))
 
 (def localtransactionreconciler
@@ -343,29 +348,53 @@
               MyLocalChart (gdom/getElement "mylocalchart"))
 
 ;; Cummulative transactions
+(defn cumtransactionread
+  [{:keys [state] :as env} key params]
+  (let [st @state]
+    (if-let [[_ value] (find st key)]
+      {:value value}
+      {:value :not-found})))
+
+(defmulti cumtransactionmutate om/dispatch)
+
+(defmethod cumtransactionmutate `get-cum-actions
+  [{:keys [state] :as env} key params]
+  {:action (fn []
+             (events/get-cum-actions))})
+
 (defui CumTransactItem
   Object
   (render [this]
     (let [{:keys [name instant]} (om/props this)]
-      (dom/li nil (str name " changed at " instant)))))
+      (when (and name instant)
+        (dom/li nil (str name " changed at " instant))))))
 
 (def ui-cumtransactitems (om/factory CumTransactItem {:keyfn :instant}))
 
 (defui CumTransacts
+  static om/IQuery
+  (query [this]
+    [:listactions])
   Object
   (render [this]
     (let [{:keys [listactions]} (om/props this)]
       (dom/div nil
                (dom/h2 nil "Cummulative actions: ")
-               ;(dom/div nil (str (om/props this)))
+               (dom/button
+                 #js {:id "btn-login"
+                      :type "button"
+                      :onClick (fn [_]
+                                 (om/transact! this `[(get-cum-actions)]))}
+                 "Get Cum Actions")
                (apply dom/ul nil
-                      (map #(ui-cumtransactitems {:react-key (:action/instant %)
-                                                  :name (:action/user %)
-                                                  :instant (:action/instant %)})
+                      (map #(ui-cumtransactitems {:react-key (:inst %)
+                                                  :name (:user %)
+                                                  :instant (:inst %)})
                            listactions))))))
 
 (def cumtransactionreconciler
-  (om/reconciler {:state mydb/global-states}))
+  (om/reconciler {:state mydb/global-states
+                  :parser (om/parser {:read cumtransactionread :mutate cumtransactionmutate})}))
 
 (om/add-root! cumtransactionreconciler
               CumTransacts (gdom/getElement "cumtransaction"))

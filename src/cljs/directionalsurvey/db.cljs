@@ -12,7 +12,7 @@
   (atom {:tableconfig init-tableconfig}))
 
 (def global-users
-  (atom {:user/names nil}))
+  (atom {:user/names ["No users"]}))
 
 (def local-count
   (atom {:count 0}))
@@ -26,10 +26,10 @@
          :totalactions 0
          :currentpick 0
          :tableconfig init-tableconfig
-         :totallistactions nil
-         :listactions nil}))
+         :totallistactions ["No actions"]
+         :listactions ["No actions"]}))
 
 (def local-states
   (atom {:name "Local user states"
          :tableconfig init-tableconfig
-         :listactions nil}))
+         :listactions ["No actions"]}))

@@ -6,6 +6,7 @@
                  [http-kit "2.1.18"]
                  [ring "1.2.2"]
                  [ring/ring-json "0.3.1"]
+                 [cheshire "5.7.1"]
                  [compojure "1.1.8"]
                  [com.taoensso/sente "0.14.0"]
                  [org.omcljs/om "1.0.0-alpha34"]

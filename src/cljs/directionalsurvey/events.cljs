@@ -2,15 +2,9 @@
   (:require [taoensso.encore :as encore]
             [taoensso.sente :as sente :refer (cb-success?)]
             [directionalsurvey.db :as mydb]
-            [clojure.string :as str]))
-
-; generate a list of usernames
-(def possible-usernames
-  (let [first-names ["Happy" "Gleeful" "Joyful" "Cheerful" "Merry" "Jolly"]
-        last-names ["Thinh" "Quang" "Dung" "Anh" "Minh" "Huy"]]
-    (for [name1 first-names
-          name2 last-names]
-      (str name1 " " name2))))
+            [clojure.string :as str]
+            [goog.string :as gstring]
+            [goog.string.format]))
 
 ; sente js setup
 (def ws-connection (sente/make-channel-socket! "/channel" {:type :auto}))
@@ -21,27 +15,47 @@
   (def send-channel!   send-fn))
 
 ;; User login
+;(defn user-login [name]
+;  (if (str/blank? name)
+;    (js/alert "Please enter a user name")
+;    (do
+;      (.log js/console (str "Logging in with user: " name))
+;      (swap! mydb/local-login assoc :user/name name)
+;      ;(send-channel! [:user/ident {:name name}])
+;      (send-channel! [:user/graphql {:name name}]))));  {:mutation (format "mutation { createUser(name: \"%s\" password: \"%s\")}" name "mypassword")}))))
+;      ;(encore/ajax-lite "/login"
+;      ;                 {:method :post
+;      ;                  :headers {:X-CSRF-Token (:csrf-token @receive-channel)}
+;      ;                  :params  {:user-id (str name)}}
+;      ;
+;      ;                 (fn [ajax-resp]
+;      ;                   (.log js/console (str "Ajax login response: %s" ajax-resp))
+;      ;                   (let [login-successful? true] ; Your logic here
+;      ;
+;      ;                     (if-not login-successful?
+;      ;                       (.log js/console "Login failed")
+;      ;                       (do
+;      ;                         (.log js/console "Login successful")
+;      ;                         (sente/chsk-reconnect! chsk)))))))))
+
 (defn user-login [name]
   (if (str/blank? name)
     (js/alert "Please enter a user name")
     (do
-      (.log js/console (str "Logging in with user: " name))
-      (swap! mydb/local-login assoc :user/name name)
-      (send-channel! [:user/ident {:name name}]))))
-      ;(encore/ajax-lite "/login"
-      ;                 {:method :post
-      ;                  :headers {:X-CSRF-Token (:csrf-token @receive-channel)}
-      ;                  :params  {:user-id (str name)}}
-      ;
-      ;                 (fn [ajax-resp]
-      ;                   (.log js/console (str "Ajax login response: %s" ajax-resp))
-      ;                   (let [login-successful? true] ; Your logic here
-      ;
-      ;                     (if-not login-successful?
-      ;                       (.log js/console "Login failed")
-      ;                       (do
-      ;                         (.log js/console "Login successful")
-      ;                         (sente/chsk-reconnect! chsk)))))))))
+      (let [queryString (gstring/format "mutation { createUser(name: \"%s\" password: \"%s\"){ name password }}" name "mypass")];(gstring/format "mutation { createUser(name: \"%s\" password: \"%s\"){ name password}}" name "mypassword")
+          (.log js/console (str "Logging in with user: " name))
+          (swap! mydb/local-login assoc :user/name name)
+          (send-channel! [:user/graphql {:mutation :createUser :queryString queryString}])))))
+
+(defn get-usernames []
+  (do
+    (let [queryString (gstring/format "query { users { name password}}")]
+      (send-channel! [:user/graphql {:query :users :queryString queryString}]))))
+
+(defn get-cum-actions []
+  (do
+    (let [queryString (gstring/format "query { actions { user row col val inst}}")]
+      (send-channel! [:user/graphql {:query :actions :queryString queryString}]))))
 
 ;; Event handler definitions
 (defn set-table-value [changeDatas]
@@ -55,16 +69,11 @@
 (defn set-history-point [idx]
   (send-channel! [:user/set-history-point {:idx (int idx)}]))
 
-(defn handle-set-table [data]
-  (swap! mydb/globalconfig assoc :tableconfig data)
-  (swap! mydb/global-states assoc :tableconfig data)
-  (swap! mydb/local-states assoc :tableconfig data))
-
 (defn handle-user-change-MD [tableconfig action]
   (let [dataTable (:data tableconfig)
-        rowIdx (:action/row action)
-        colIdx (:action/column action)
-        newMD (:action/newval action)
+        rowIdx (:row action)
+        colIdx (:col action)
+        newMD (:val action)
         tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newMD)
         tmpDataTable1 (vec (sort #(compare (get %1 0) (get %2 0)) tmpDataTable1))
         tmpDataTable2 (assoc-in tmpDataTable1 [0 2] (* 180.0
@@ -89,9 +98,9 @@
 
 (defn handle-user-change-TVD [tableconfig action]
   (let [dataTable (:data tableconfig)
-        rowIdx (:action/row action)
-        colIdx (:action/column action)
-        newTVD (:action/newval action)
+        rowIdx (:row action)
+        colIdx (:col action)
+        newTVD (:val action)
         tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newTVD)
         tmpDataTable2 (assoc-in tmpDataTable1 [0 2] (* 180.0
                                                        (/
@@ -115,9 +124,9 @@
 
 (defn handle-user-change-Deviation [tableconfig action]
   (let [dataTable (:data tableconfig)
-        rowIdx (:action/row action)
-        colIdx (:action/column action)
-        newDeviation (:action/newval action)
+        rowIdx (:row action)
+        colIdx (:col action)
+        newDeviation (:val action)
         tmpDataTable1 (assoc-in dataTable [rowIdx colIdx] newDeviation)
         tmpDataTable2 (assoc-in tmpDataTable1 [0 1] (* (get-in tmpDataTable1 [0 0]) (Math/cos (* (/ (get-in tmpDataTable1 [0 2]) 180.0) Math/PI))))
         newDataTable (reduce (fn [data rowIdx]
@@ -133,7 +142,7 @@
     newtableconfig))
 
 (defn handle-table-actions [tableconfig action]
-  (let [colIdx (:action/column action)]
+  (let [colIdx (:col action)]
     ;(.log js/console "action: " action)
     (cond
       (= 0 colIdx) (handle-user-change-MD tableconfig action)
@@ -153,10 +162,9 @@
     (swap! mydb/local-states assoc :tableconfig newtableconfig)))
 
 (defn handle-listactions-received [data]
-  (let [rawdata (:result data)
-        totalcumactions (vec (sort #(compare (:action/instant %1) (:action/instant %2)) rawdata))
+  (let [totalcumactions (:result data)
         username (:user/name @mydb/local-login)
-        localactions (filterv #(= (:action/user %) username) totalcumactions)
+        localactions (filterv #(= (:user %) username) totalcumactions)
         Naction (count totalcumactions)
         myinitconfig (:tableconfig @mydb/globalconfig)]
     (if (some? username)
@@ -182,7 +190,7 @@
         username (:user/name @mydb/local-login)
         tottalcumactions (:totallistactions @mydb/global-states)
         newtotalcumactions (subvec tottalcumactions 0 idx)
-        newlocalactions (filterv #(= (:action/user %) username) newtotalcumactions)
+        newlocalactions (filterv #(= (:user %) username) newtotalcumactions)
         Naction idx]
     (.log js/console "User name: " username)
     (.log js/console "idx: " idx)
@@ -195,13 +203,60 @@
     (handle-global-table newtotalcumactions)
     (handle-local-table newlocalactions)))
 
+; handle graphql message
+(defn- handle-createUser [rawdata]
+  (let [data (mapv #(:name %) rawdata)]
+    (swap! mydb/global-users assoc :user/names data)))
+
+(defn- handle-users [rawdata]
+  (let [data (mapv #(:name %) rawdata)]
+    (swap! mydb/global-users assoc :user/names data)))
+
+(defn- handle-actions [rawdata]
+  (let [totalcumactions rawdata
+        username (:user/name @mydb/local-login)
+        localactions (filterv #(= (:user %) username) totalcumactions)
+        Naction (count totalcumactions)
+        myinitconfig (:tableconfig @mydb/globalconfig)]
+    (if (some? username)
+      (do
+        (.log js/console "User name: " username)
+        (.log js/console "Cummulative actions: " totalcumactions)
+        (.log js/console "Local actions: " localactions)
+        (.log js/console "Naction: " Naction)
+        (swap! mydb/global-states assoc :totallistactions totalcumactions)
+        (swap! mydb/global-states assoc :listactions totalcumactions)
+        (swap! mydb/local-states assoc :listactions localactions)
+        (swap! mydb/global-states assoc :totalactions Naction)
+        (swap! mydb/global-states assoc :currentpick Naction)
+        (handle-global-table totalcumactions)
+        (handle-local-table localactions))
+      (do
+        (.log js/console "Not signed in!!!")
+        (swap! mydb/global-states assoc :tableconfig myinitconfig)
+        (swap! mydb/local-states assoc :tableconfig myinitconfig)))))
+
+(defn- handle-setTable [data]
+  (swap! mydb/globalconfig assoc :tableconfig data)
+  (swap! mydb/global-states assoc :tableconfig data)
+  (swap! mydb/local-states assoc :tableconfig data))
+
+(defn- handle-user-graphql [rawdata]
+  (let [msg-id (first (keys rawdata))
+        data (first (vals rawdata))]
+    (.log js/console "msg-id: " msg-id)
+    (.log js/console "data: " data)
+    (case msg-id
+      :createUser (handle-createUser data)
+      :setTable (handle-setTable data)
+      :users (handle-users data)
+      :actions (handle-actions data)
+      (.log js/console "Unmatched graphql event"))))
 
 ; handle application-specific events
 (defn- app-message-received [[msgType data]]
   (case msgType
-    :user/names (swap! mydb/global-users assoc :user/names data)
-    :db/table (handle-set-table data)
-    :user/listactions (handle-listactions-received data)
+    :user/graphql (handle-user-graphql data)
     :user/set-history-point (handle-set-history-point data)
     (.log js/console "Unmatched application event")))
 
@@ -209,8 +264,8 @@
 (defn- channel-state-message-received [state]
   (if (:first-open? state)
     (let [name nil];;(rand-nth possible-usernames)
-      (swap! mydb/local-login assoc :user/name name)
-      (send-channel! [:user/ident {:name name}]))))
+      (swap! mydb/local-login assoc :user/name name))))
+      ;(send-channel! [:user/ident {:name name}]))))
 
 ; main router for websocket events
 (defn- event-handler [[id data] _]

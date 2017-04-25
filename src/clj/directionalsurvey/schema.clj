@@ -5,7 +5,7 @@
             [com.walmartlabs.lacinia.schema :as schema]
             [directionalsurvey.db :as db]))
 
-(def star-wars-schema
+(def directional-survey-schema
   (-> (io/resource "directionalsurveyschema.edn")
       slurp
       edn/read-string
