@@ -1,4 +1,4 @@
-Basic setup with Datomic Sente and Om.Next
+A collaboratively, realtime webapp using:
 =========
 
 * Clojure and ClojureScript
@@ -6,6 +6,7 @@ Basic setup with Datomic Sente and Om.Next
 * [Datomic](http://www.datomic.com/)
 * [Sente](https://github.com/ptaoussanis/sente) for websocket communication
 * [Om.next] 
+* Lacinia (GraphQL server).
 
 https://www.youtube.com/watch?v=z3sh7KfQZ0c
 
